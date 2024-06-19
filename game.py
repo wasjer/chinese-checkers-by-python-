@@ -31,7 +31,7 @@ class Checkers:
         pygame.init()
         self.screen_width = 800
         self.screen_height = 800
-        self.game_active = False
+        self.game_active = True
         self.scr = pygame.display.set_mode((self.screen_width,self.screen_height))
         pygame.display.set_caption("中国跳棋")
         self.board_image = pygame.image.load("D:\\garage\\learning\\python_work\\chinese jump checkers\\image.png")         # 加载背景图片
@@ -82,6 +82,9 @@ class Checkers:
         while True:
             self.检查事件()
             self.更新屏幕显示()
+            if self.turn == 1:
+                print("AI开始走棋")
+                self.计算AI走法()
 
     def 检查事件(self):
         """响应按键和鼠标事件"""
@@ -99,7 +102,7 @@ class Checkers:
         mouse_x, mouse_y = pos
         clicked_circle = self._检查点击位置是否在格子内(mouse_x, mouse_y)
      
-        if clicked_circle:
+        if clicked_circle and self.game_active:
             stat = self.grid_stat[self.grid_to_stat[clicked_circle]]
             if stat == self.turn:
                 self.grid_stat = {k: (v if v != 3 else 2) for k, v in self.grid_stat.items()} # 把所有空白格回复成2
@@ -113,8 +116,8 @@ class Checkers:
                 self.turn = 1 - self.turn  # 轮到对方走棋
                 self.选中的圆圈 = None # 清空选择
                 self.grid_stat = {k: (v if v != 3 else 2) for k, v in self.grid_stat.items()} # 把所有空白格回复成2
-                print(f"Moved piece from {self.grid_to_stat[last_selected]} to {self.grid_to_stat[clicked_circle]}")
-                self._检查是否胜利()
+                print(f"红棋 {self.grid_to_stat[last_selected]} 到 {self.grid_to_stat[clicked_circle]}")
+                 # self._检查是否胜利()
 
     def _检查点击位置是否在格子内(self,mouse_x, mouse_y):
          for (cx, cy) in self.grid_to_stat.keys():
@@ -125,6 +128,7 @@ class Checkers:
     def 根据规则判断选中子的可走格(self, pos, visited=None, is_jump=False):
         """用递归调用，深度优先遍历，找出选中棋子的所有可走位置"""
         if visited is None:   # 首次执行方法时建立集合visited，后面调用时就继承之前的visited
+            self.possible_moves = []
             visited = set()
 
         x, y = pos
@@ -132,16 +136,22 @@ class Checkers:
 
         for dx, dy in directions:
             new_x, new_y = x + dx, y + dy
+            
             if (new_x, new_y) in self.grid_stat and self.grid_stat[(new_x, new_y)] == 2 and not is_jump: # 棋子的相邻格可以走，但跳子落点的相邻格不能走
                 self.possible_moves.append((new_x, new_y))
+                # print(f"对于棋子({x},{y}),临近格:({new_x}, {new_y}), 方向:({dx}, {dy})")
+                # print(f'\npossible_move({x},{y}),可走格:{self.possible_moves}')
                 self.grid_stat[(new_x, new_y)] = 3
-            elif (new_x, new_y) in self.grid_stat and self.grid_stat[(new_x, new_y)] != 2:  # 相邻格如果有棋子，则沿着该方向检查下一个格子
+                
+            elif (new_x, new_y) in self.grid_stat and (self.grid_stat[(new_x, new_y)] == 0 or self.grid_stat[(new_x, new_y)] == 1):  # 相邻格如果有棋子，则沿着该方向检查下一个格子
                 jump_x, jump_y = new_x + dx, new_y + dy
                 if (jump_x, jump_y) in self.grid_stat and self.grid_stat[(jump_x, jump_y)] == 2: # 如果下一个是空格，则可以走。
                     self.possible_moves.append((jump_x, jump_y))
                     if (jump_x, jump_y) not in visited:  # 如果这个跳子落点不在集合内，就把他加进去，格子属性改成可以走
                         visited.add((jump_x, jump_y))
                         self.grid_stat[(jump_x, jump_y)] = 3
+                        # print(f"从: ({new_x}, {new_y})跳到: ({jump_x}, {jump_y}), 方向: ({dx}, {dy})")
+                        # print(f'\n对于棋子({x},{y}),value = {self.grid_stat[(x,y)]}可走格:{self.possible_moves}#####')
                         self.根据规则判断选中子的可走格((jump_x, jump_y), visited, is_jump=True)
 
         return visited  # 返回这个集合，直到所有可走的位置全部找出来，方法停止。
@@ -150,10 +160,10 @@ class Checkers:
         self.画棋盘()
         self.画棋子()
         self._在有效选中的棋子上显示圆圈()
-        if self.red:
-            self.胜利("red")
-        if self.blue:
-            self.胜利("blue")
+        if all(self.grid_stat[key] == 0 for key in self.grid_stat if key[1] < -4):
+            self.显示胜利("red")
+        if all(self.grid_stat[key] == 1 for key in self.grid_stat if key[1] > 4):
+            self.显示胜利("blue")
         self.scr.blit(self.透明图层, (0,0)) #画上透明图层
         pygame.display.flip() # 每次循环前都重新绘制屏幕
 
@@ -174,14 +184,6 @@ class Checkers:
                 self.透明图层.fill((0, 0, 0, 0))
                 pygame.draw.circle(self.透明图层, (255,255,255, 150), self.选中的圆圈, 11, 2)  # 绘制选中圆圈
 
-    def _检查是否胜利(self):
-        if all(self.grid_stat[key] == 1 for key in self.grid_stat if key[1] > 4):
-            self.blue = True
-            print ("蓝方胜利")
-        if all(self.grid_stat[key] == 0 for key in self.grid_stat if key[1] < -4):
-            self.red = True
-            print ("红方胜利")
-
     def 仅测试用(self):
         for key, value in self.grid_stat.items():
             if key[1] > 4:
@@ -193,14 +195,96 @@ class Checkers:
         self.grid_stat[(-4,5)] = 2
         self.grid_stat[(-4,4)] = 1
         
-    def 胜利(self, color):
+    def 显示胜利(self, color):
         log = f"{color} is win"
         self.font = pygame.font.SysFont(None, 48)  # 使用默认字体
         self.font_image = self.font.render(log, True, (255, 0, 255))  # 渲染字体
         # 在透明图层上绘制字体
         text_rect = self.font_image.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
         self.透明图层.blit(self.font_image, text_rect)
+        self.game_active = False
 
+    def 评分(self, board, player):
+        score = 0
+
+        # 遍历棋盘上的所有棋子
+        for pos, value in board.items():
+            # 如果是当前玩家的棋子
+            if value == player:
+                score += pos[1]  # 累加y值
+            # 如果是对手的棋子
+            elif value == 1 - player:
+                score -= pos[1]  # 减去y值
+
+        return score
+    
+    def 阿尔法贝塔剪枝(self, board, depth, alpha, beta, maximizing_player):
+        if depth == 0 or self.检查是否胜利条件(board):
+            return self.评分(board, maximizing_player), None
+        valid_moves = []
+        for pos, value in board.items():            # 遍历所有的格子
+            if value == maximizing_player:          # 如果找到一个蓝子b1   
+                self.possible_moves = []            # 建立一个空的坐标列表
+                self.根据规则判断选中子的可走格(pos)   # 这个列表盛放所有b的可走格的坐标
+                for move in self.possible_moves:    # 对于b1的每个可走格
+                    new_board = board.copy()        # 都产生一个走子后的新棋盘
+                    new_board[move] = maximizing_player
+                    new_board[pos] = 2
+                    valid_moves.append(new_board)   # 把所有的b的走子后的新棋盘放在moves里，然后再寻找下一个蓝子b2
+        #  到这里，valid_moves就包括了所有的蓝子的所有可能的move后的棋盘状态。
+ 
+        best_move = None
+        
+        if maximizing_player:
+            max_eval = -float('inf')
+            for move in valid_moves:
+                evaluation = self.阿尔法贝塔剪枝(move, depth - 1, alpha, beta, False)[0]  # 为当前所有走法进行评分
+                # print(f"Max Player: Move = {move}, Evaluation = {evaluation}, Alpha = {alpha}, Beta = {beta}")
+                
+                if evaluation > max_eval:
+                    max_eval = evaluation
+                    best_move = move
+                alpha = max(alpha, evaluation)
+                if beta <= alpha:
+                    print(f"Max Player: Pruning with Alpha = {alpha}, Beta = {beta}")
+
+                    break
+            return max_eval, best_move
+        else:
+            min_eval = float('inf')
+            for move in valid_moves:
+                evaluation = self.阿尔法贝塔剪枝(move, depth - 1, alpha, beta, True)[0]
+                # print(f"Min Player: Move = {move}, Evaluation = {evaluation}, Alpha = {alpha}, Beta = {beta}")
+                if evaluation < min_eval:
+                    min_eval = evaluation
+                    best_move = move
+                beta = min(beta, evaluation)
+                if beta <= alpha:
+                    print(f"Min Player: Pruning with Alpha = {alpha}, Beta = {beta}")
+                    break
+            return min_eval, best_move
+        
+    def 计算AI走法(self):
+        depth = 3
+        new_grid_stat = self.grid_stat.copy()
+        _, best_move = self.阿尔法贝塔剪枝(new_grid_stat, depth, -float('inf'), float('inf'), True)
+        if best_move:
+            for pos, value in best_move.items():
+                self.grid_stat[pos] = value
+            self.turn = 1 - self.turn
+    
+    def 检查是否胜利条件(self, board):
+        red_wins = all(board[key] == 0 for key in board if key[1] < -4)
+        blue_wins = all(board[key] == 1 for key in board if key[1] > 4)
+        return red_wins or blue_wins
+    
+    def 显示上一步移动(self, start, end):
+        start_pos = self.grid_to_blit[start]
+        end_pos = self.grid_to_blit[end]
+        start_coord = (int(start_pos[0]), int(start_pos[1]))
+        end_coord = (int(end_pos[0]), int(end_pos[1]))
+        pygame.draw.line(self.scr, (255, 255, 0), start_coord, end_coord, 3)
+    
 if __name__ == '__main__':
     role = Checkers()
     role.运行游戏()
