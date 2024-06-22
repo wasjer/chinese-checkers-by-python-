@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import copy
 
 
 class Grid():
@@ -34,7 +35,7 @@ class Checkers:
         self.game_active = True
         self.scr = pygame.display.set_mode((self.screen_width,self.screen_height))
         pygame.display.set_caption("中国跳棋")
-        self.board_image = pygame.image.load("D:\\garage\\learning\\python_work\\chinese jump checkers\\image.png")         # 加载背景图片
+        self.board_image = pygame.image.load("D:\\garage\\learning\\python_work\\chinese jump checkers\\image\\image.png")         # 加载背景图片
         self.board_rect = self.board_image.get_rect()
         self.平滑缩小的棋盘图 = pygame.transform.smoothscale(self.board_image,(self.screen_width,self.screen_height))
         self.透明图层 = pygame.Surface((self.screen_width,self.screen_height), pygame.SRCALPHA)
@@ -75,6 +76,12 @@ class Checkers:
         for key, value in self.grid_stat.items():
             if key[1] < -4:
                 self.grid_stat[key] = 1
+        sorted_keys = sorted(self.grid_stat.keys(), key=lambda k: (k[1], k[0]))
+        sorted_grid_stat = {key: self.grid_stat[key] for key in sorted_keys}
+        
+        # for key, value in sorted_grid_stat.items():
+        #     print(f"{key}: {value}")
+        self.grid_stat = sorted_grid_stat
         # self.仅测试用()
 
     def 运行游戏(self):
@@ -125,34 +132,47 @@ class Checkers:
             if distance <= 11 :  # 假设半径为11
                 return (cx,cy)
 
-    def 根据规则判断选中子的可走格(self, pos, visited=None, is_jump=False):
+    def 根据规则判断选中子的可走格(self, pos, visited=None, is_jump=False, grid=None):
         """用递归调用，深度优先遍历，找出选中棋子的所有可走位置"""
         if visited is None:   # 首次执行方法时建立集合visited，后面调用时就继承之前的visited
             self.possible_moves = []
             visited = set()
+            self.grid_stat_copy = self.grid_stat.copy()  # 创建grid_stat的副本
+
+        if grid is None:
+            grid = self.grid_stat
 
         x, y = pos
-        directions = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)] # 格子的6个方向
+        directions = [(-1, 0), (1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)] # 格子的6个方向
 
         for dx, dy in directions:
             new_x, new_y = x + dx, y + dy
-            
-            if (new_x, new_y) in self.grid_stat and self.grid_stat[(new_x, new_y)] == 2 and not is_jump: # 棋子的相邻格可以走，但跳子落点的相邻格不能走
-                self.possible_moves.append((new_x, new_y))
-                # print(f"对于棋子({x},{y}),临近格:({new_x}, {new_y}), 方向:({dx}, {dy})")
-                # print(f'\npossible_move({x},{y}),可走格:{self.possible_moves}')
-                self.grid_stat[(new_x, new_y)] = 3
+            if (new_x, new_y) in self.grid_stat: 
+                value = grid[(new_x,new_y)]
+                if (value == 2 or value == 3) and not is_jump: # 棋子的相邻格可以走，但跳子落点的相邻格不能走
+                    if (new_x, new_y) not in self.possible_moves:
+                        self.possible_moves.append((new_x, new_y))
+                    # print(f"对于棋子({x},{y}),临近格:({new_x}, {new_y}), 方向:({dx}, {dy})")
+                    # print(f'\npossible_move({x},{y}),可走格:{self.possible_moves}')
+                    self.grid_stat_copy[(new_x, new_y)] = 3
                 
-            elif (new_x, new_y) in self.grid_stat and (self.grid_stat[(new_x, new_y)] == 0 or self.grid_stat[(new_x, new_y)] == 1):  # 相邻格如果有棋子，则沿着该方向检查下一个格子
-                jump_x, jump_y = new_x + dx, new_y + dy
-                if (jump_x, jump_y) in self.grid_stat and self.grid_stat[(jump_x, jump_y)] == 2: # 如果下一个是空格，则可以走。
-                    self.possible_moves.append((jump_x, jump_y))
-                    if (jump_x, jump_y) not in visited:  # 如果这个跳子落点不在集合内，就把他加进去，格子属性改成可以走
-                        visited.add((jump_x, jump_y))
-                        self.grid_stat[(jump_x, jump_y)] = 3
-                        # print(f"从: ({new_x}, {new_y})跳到: ({jump_x}, {jump_y}), 方向: ({dx}, {dy})")
-                        # print(f'\n对于棋子({x},{y}),value = {self.grid_stat[(x,y)]}可走格:{self.possible_moves}#####')
-                        self.根据规则判断选中子的可走格((jump_x, jump_y), visited, is_jump=True)
+                elif value == 0 or value == 1:  # 相邻格如果有棋子，则沿着该方向检查下一个格子
+                    jump_x, jump_y = new_x + dx, new_y + dy
+                    if (jump_x, jump_y) in grid:
+                        value_jump = grid[(jump_x, jump_y)]
+                        if value_jump == 2 or value_jump == 3: # 如果下一个是空格，则可以走。
+                            if (jump_x, jump_y) not in self.possible_moves:
+                                self.possible_moves.append((jump_x, jump_y))
+                            if (jump_x, jump_y) not in visited:  # 如果这个跳子落点不在集合内，就把他加进去，格子属性改成可以走
+                                visited.add((jump_x, jump_y))
+                                self.grid_stat_copy[(jump_x, jump_y)] = 3
+                                # print(f"从: ({new_x}, {new_y})跳到: ({jump_x}, {jump_y}), 方向: ({dx}, {dy})")
+                                # print(f'\n对于棋子({x},{y}),value = {self.grid_stat[(x,y)]}可走格:{self.possible_moves}#####')
+                                self.根据规则判断选中子的可走格((jump_x, jump_y), visited, is_jump=True, grid=grid)
+
+    # 在所有递归调用结束后，更新self.grid_stat
+        if not is_jump:
+            self.grid_stat.update(self.grid_stat_copy)
 
         return visited  # 返回这个集合，直到所有可走的位置全部找出来，方法停止。
 
@@ -206,70 +226,79 @@ class Checkers:
 
     def 评分(self, board, player):
         score = 0
-
+        
         # 遍历棋盘上的所有棋子
         for pos, value in board.items():
             # 如果是当前玩家的棋子
+            #TODO:当进入终局时（所有蓝子的y大于等于3）启动另一套评分系统，走法使得蓝子离空格距离越近，分越高。
             if value == player:
-                score += pos[1]  # 累加y值
+            #     if all(board[key] == 1 for key in board if key[1] >= 4):
+            #         for k,v in board.items():
+            #             if k[1] >4 and v == 2:
+            #                 goal = k
+            #                 distance = abs(goal[0]-pos[0]) + (goal[1]-pos[1])
+            #                 score = 100000 - distance
+            #     else:
+                    score += pos[1]   # 累加y值
+
             # 如果是对手的棋子
             elif value == 1 - player:
-                score -= pos[1]  # 减去y值
+                score += pos[1]  # 减去y值
 
         return score
     
-    def 阿尔法贝塔剪枝(self, board, depth, alpha, beta, maximizing_player):
+    def minimax(self, board, depth, alpha, beta, maximizing_player):
         if depth == 0 or self.检查是否胜利条件(board):
             return self.评分(board, maximizing_player), None
+
         valid_moves = []
-        for pos, value in board.items():            # 遍历所有的格子
-            if value == maximizing_player:          # 如果找到一个蓝子b1   
-                self.possible_moves = []            # 建立一个空的坐标列表
-                self.根据规则判断选中子的可走格(pos)   # 这个列表盛放所有b的可走格的坐标
-                for move in self.possible_moves:    # 对于b1的每个可走格
-                    new_board = board.copy()        # 都产生一个走子后的新棋盘
-                    new_board[move] = maximizing_player
-                    new_board[pos] = 2
-                    valid_moves.append(new_board)   # 把所有的b的走子后的新棋盘放在moves里，然后再寻找下一个蓝子b2
-        #  到这里，valid_moves就包括了所有的蓝子的所有可能的move后的棋盘状态。
- 
+        for pos, value in board.items():
+            if value == maximizing_player:
+                self.possible_moves = []
+                if board[pos] == 1 or board[pos] == 0:
+                    self.根据规则判断选中子的可走格(pos, grid=board)
+                    for moves in self.possible_moves:
+                        new_board = board.copy()
+                        new_board[moves] = maximizing_player
+                        new_board[pos] = 2
+                        valid_moves.append(new_board)
+
         best_move = None
-        
+
         if maximizing_player:
             max_eval = -float('inf')
             for move in valid_moves:
-                evaluation = self.阿尔法贝塔剪枝(move, depth - 1, alpha, beta, False)[0]  # 为当前所有走法进行评分
-                # print(f"Max Player: Move = {move}, Evaluation = {evaluation}, Alpha = {alpha}, Beta = {beta}")
-                
+                evaluation = self.minimax(move, depth - 1, alpha, beta, False)[0]
                 if evaluation > max_eval:
                     max_eval = evaluation
                     best_move = move
                 alpha = max(alpha, evaluation)
                 if beta <= alpha:
-                    print(f"Max Player: Pruning with Alpha = {alpha}, Beta = {beta}")
-
-                    break
+                    break  # beta 剪枝
             return max_eval, best_move
         else:
             min_eval = float('inf')
             for move in valid_moves:
-                evaluation = self.阿尔法贝塔剪枝(move, depth - 1, alpha, beta, True)[0]
-                # print(f"Min Player: Move = {move}, Evaluation = {evaluation}, Alpha = {alpha}, Beta = {beta}")
+                evaluation = self.minimax(move, depth - 1, alpha, beta, True)[0]
                 if evaluation < min_eval:
                     min_eval = evaluation
                     best_move = move
                 beta = min(beta, evaluation)
                 if beta <= alpha:
-                    print(f"Min Player: Pruning with Alpha = {alpha}, Beta = {beta}")
-                    break
+                    break  # alpha 剪枝
             return min_eval, best_move
-        
+
     def 计算AI走法(self):
         depth = 3
+        alpha = -float('inf')
+        beta = float('inf')
         new_grid_stat = self.grid_stat.copy()
-        _, best_move = self.阿尔法贝塔剪枝(new_grid_stat, depth, -float('inf'), float('inf'), True)
+        _, best_move = self.minimax(new_grid_stat, depth, alpha, beta, True)
+
         if best_move:
             for pos, value in best_move.items():
+                if best_move[pos] != self.grid_stat[pos]:
+                    print(f"最优走法是走 {pos}")
                 self.grid_stat[pos] = value
             self.turn = 1 - self.turn
     
