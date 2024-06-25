@@ -1,14 +1,12 @@
 import pygame
 import sys
 import math
-import copy
 
 
 class Grid():
     def __init__(self):
         self.grid_pos = []
         self.grid_473 = []
-
 
     def 建立所有的格子坐标列表(self, screen_width = 800, screen_height = 800):
         for j in range (-4,5):
@@ -77,9 +75,6 @@ class Checkers:
                 self.grid_stat[key] = 1
         sorted_keys = sorted(self.grid_stat.keys(), key=lambda k: (k[1], k[0]))
         sorted_grid_stat = {key: self.grid_stat[key] for key in sorted_keys}
-        
-        # for key, value in sorted_grid_stat.items():
-        #     print(f"{key}: {value}")
         self.grid_stat = sorted_grid_stat
         # self.仅测试用()
 
@@ -89,7 +84,6 @@ class Checkers:
             self.检查事件()
             self.更新屏幕显示()
             if self.turn == 1:
-                # print("AI开始走棋")
                 self.计算AI走法()
 
     def 检查事件(self):
@@ -122,8 +116,6 @@ class Checkers:
                 self.turn = 1 - self.turn  # 轮到对方走棋
                 self.选中的圆圈 = None # 清空选择
                 self.grid_stat = {k: (v if v != 3 else 2) for k, v in self.grid_stat.items()} # 把所有空白格回复成2
-                # print(f"红棋 {self.grid_to_stat[last_selected]} 到 {self.grid_to_stat[clicked_circle]}")
-                 # self._检查是否胜利()
 
     def _检查点击位置是否在格子内(self,mouse_x, mouse_y):
          for (cx, cy) in self.grid_to_stat.keys():
@@ -234,16 +226,8 @@ class Checkers:
         # 遍历棋盘上的所有棋子
         for pos, value in board.items():
             # 如果是当前玩家的棋子
-            #TODO:当进入终局时（所有蓝子的y大于等于3）启动另一套评分系统，走法使得蓝子离空格距离越近，分越高。
             if value == player:
-            #     if all(board[key] == 1 for key in board if key[1] >= 4):
-            #         for k,v in board.items():
-            #             if k[1] >4 and v == 2:
-            #                 goal = k
-            #                 distance = abs(goal[0]-pos[0]) + (goal[1]-pos[1])
-            #                 score = 100000 - distance
-            #     else:
-                    score += pos[1]   # 累加y值
+                score += pos[1]   # 累加y值
 
             # 如果是对手的棋子
             elif value == 1 - player:
@@ -301,8 +285,6 @@ class Checkers:
 
         if best_move:
             for pos, value in best_move.items():
-                # if best_move[pos] != self.grid_stat[pos]:
-                    # print(f"最优走法是走 {pos}")
                 self.grid_stat[pos] = value
             self.turn = 1 - self.turn
     
