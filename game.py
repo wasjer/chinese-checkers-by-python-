@@ -25,7 +25,6 @@ class Grid():
                 self.grid_pos.append((-x,-y))
         self.grid_pos = list(set(self.grid_pos))
 
-
 class Checkers:
     """管理游戏资源和行为的类"""
     def __init__(self):
@@ -35,7 +34,7 @@ class Checkers:
         self.game_active = True
         self.scr = pygame.display.set_mode((self.screen_width,self.screen_height))
         pygame.display.set_caption("中国跳棋")
-        self.board_image = pygame.image.load("D:\\garage\\learning\\python_work\\chinese jump checkers\\image\\image.png")         # 加载背景图片
+        self.board_image = pygame.image.load(".\image\\image.png")         # 加载背景图片
         self.board_rect = self.board_image.get_rect()
         self.平滑缩小的棋盘图 = pygame.transform.smoothscale(self.board_image,(self.screen_width,self.screen_height))
         self.透明图层 = pygame.Surface((self.screen_width,self.screen_height), pygame.SRCALPHA)
@@ -90,7 +89,7 @@ class Checkers:
             self.检查事件()
             self.更新屏幕显示()
             if self.turn == 1:
-                print("AI开始走棋")
+                # print("AI开始走棋")
                 self.计算AI走法()
 
     def 检查事件(self):
@@ -123,7 +122,7 @@ class Checkers:
                 self.turn = 1 - self.turn  # 轮到对方走棋
                 self.选中的圆圈 = None # 清空选择
                 self.grid_stat = {k: (v if v != 3 else 2) for k, v in self.grid_stat.items()} # 把所有空白格回复成2
-                print(f"红棋 {self.grid_to_stat[last_selected]} 到 {self.grid_to_stat[clicked_circle]}")
+                # print(f"红棋 {self.grid_to_stat[last_selected]} 到 {self.grid_to_stat[clicked_circle]}")
                  # self._检查是否胜利()
 
     def _检查点击位置是否在格子内(self,mouse_x, mouse_y):
@@ -147,17 +146,25 @@ class Checkers:
 
         for dx, dy in directions:
             new_x, new_y = x + dx, y + dy
+
+            # 添加排除条件
+            if abs(new_x + new_y) > 4 or new_x > 4 or new_x < -4:
+                continue
+
             if (new_x, new_y) in self.grid_stat: 
                 value = grid[(new_x,new_y)]
                 if (value == 2 or value == 3) and not is_jump: # 棋子的相邻格可以走，但跳子落点的相邻格不能走
                     if (new_x, new_y) not in self.possible_moves:
                         self.possible_moves.append((new_x, new_y))
-                    # print(f"对于棋子({x},{y}),临近格:({new_x}, {new_y}), 方向:({dx}, {dy})")
-                    # print(f'\npossible_move({x},{y}),可走格:{self.possible_moves}')
                     self.grid_stat_copy[(new_x, new_y)] = 3
                 
                 elif value == 0 or value == 1:  # 相邻格如果有棋子，则沿着该方向检查下一个格子
                     jump_x, jump_y = new_x + dx, new_y + dy
+
+                    # 添加排除条件
+                    if abs(jump_x + jump_y) > 4 or jump_x > 4 or jump_x < -4:
+                        continue
+
                     if (jump_x, jump_y) in grid:
                         value_jump = grid[(jump_x, jump_y)]
                         if value_jump == 2 or value_jump == 3: # 如果下一个是空格，则可以走。
@@ -166,11 +173,8 @@ class Checkers:
                             if (jump_x, jump_y) not in visited:  # 如果这个跳子落点不在集合内，就把他加进去，格子属性改成可以走
                                 visited.add((jump_x, jump_y))
                                 self.grid_stat_copy[(jump_x, jump_y)] = 3
-                                # print(f"从: ({new_x}, {new_y})跳到: ({jump_x}, {jump_y}), 方向: ({dx}, {dy})")
-                                # print(f'\n对于棋子({x},{y}),value = {self.grid_stat[(x,y)]}可走格:{self.possible_moves}#####')
                                 self.根据规则判断选中子的可走格((jump_x, jump_y), visited, is_jump=True, grid=grid)
 
-    # 在所有递归调用结束后，更新self.grid_stat
         if not is_jump:
             self.grid_stat.update(self.grid_stat_copy)
 
@@ -297,8 +301,8 @@ class Checkers:
 
         if best_move:
             for pos, value in best_move.items():
-                if best_move[pos] != self.grid_stat[pos]:
-                    print(f"最优走法是走 {pos}")
+                # if best_move[pos] != self.grid_stat[pos]:
+                    # print(f"最优走法是走 {pos}")
                 self.grid_stat[pos] = value
             self.turn = 1 - self.turn
     
